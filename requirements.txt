@@ -1,0 +1,5 @@
+fastapi
+lunar-python
+openai
+python-dotenv
+pydantic

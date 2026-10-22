@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/server.py": {
+      "maxDuration": 300
+    }
+  }
+}

@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/server.py",
+      "src": "server.py",
       "use": "@vercel/python"
     },
     {
@@ -13,11 +13,23 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "api/server.py"
+      "dest": "server.py"
+    },
+    {
+      "src": "/terms.html",
+      "dest": "static/terms.html"
+    },
+    {
+      "src": "/privacy.html",
+      "dest": "static/privacy.html"
+    },
+    {
+      "src": "/refund.html",
+      "dest": "static/refund.html"
     },
     {
       "src": "/(.*)",
-      "dest": "static/$1"
+      "dest": "static/index.html"
     }
   ]
 }

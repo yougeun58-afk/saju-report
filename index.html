@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>사주 리포트</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Malgun Gothic", sans-serif;
+         background: #f5f5f7; margin: 0; padding: 20px; color: #1d1d1f; }
+  .container { max-width: 800px; margin: 0 auto; }
+  h1 { font-size: 24px; margin-bottom: 24px; }
+  .card { background: white; border-radius: 12px; padding: 24px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px; }
+  label { display: block; font-size: 13px; font-weight: 600;
+          margin-bottom: 6px; color: #555; }
+  input, select { width: 100%; padding: 10px 12px; border: 1px solid #ddd;
+                  border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
+  .row { display: flex; gap: 12px; }
+  .row > div { flex: 1; }
+  button { width: 100%; padding: 14px; background: #0071e3; color: white;
+           border: none; border-radius: 8px; font-size: 16px;
+           font-weight: 600; cursor: pointer; }
+  button:disabled { background: #aaa; cursor: wait; }
+  #result { white-space: pre-wrap; line-height: 1.8; font-size: 14px; }
+  .spinner { text-align: center; color: #666; padding: 20px; }
+  .error { color: #c00; padding: 12px; background: #fee;
+           border-radius: 8px; font-size: 13px; margin-top: 12px; }
+  .hidden { display: none; }
+
+  /* 푸터 스타일 */
+  .footer {
+    margin-top: 40px; padding: 20px 0; border-top: 1px solid #ddd;
+    font-size: 12px; color: #888; line-height: 1.6;
+  }
+  .footer-content { max-width: 800px; margin: 0 auto; }
+  .footer h4 { color: #555; margin-bottom: 8px; font-size: 13px; }
+  .footer-links { margin: 12px 0; }
+  .footer-links a { color: #0071e3; text-decoration: none; margin: 0 4px; }
+  .footer-links a:hover { text-decoration: underline; }
+  .footer-disclaimer { margin-top: 12px; color: #aaa; font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔮 사주 리포트</h1>
+
+  <!-- 입금 계좌 안내 -->
+  <div class="card" style="background:#f0f8ff; padding:16px; font-size:13px;">
+    <strong>💳 입금 계좌 안내</strong><br>
+    새마을금고 9002-2036-44916 (예금주: 임유근)<br>
+    <span style="color:#666;">입금 후 "분석하기"를 누르면 리포트가 생성됩니다.</span>
+  </div>
+
+  <div class="card">
+    <label>성명</label>
+    <input id="name" placeholder="홍길동">
+
+    <div class="row">
+      <div>
+        <label>성별</label>
+        <select id="gender">
+          <option value="M">남성</option>
+          <option value="F">여성</option>
+        </select>
+      </div>
+      <div>
+        <label>양력/음력</label>
+        <select id="calendar">
+          <option value="solar">양력</option>
+          <option value="lunar">음력</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>생년월일</label>
+        <input id="birth_date" type="date">
+      </div>
+      <div>
+        <label>태어난 시간 (모르면 비워두세요)</label>
+        <input id="time" type="time">
+      </div>
+    </div>
+
+    <label>메뉴 선택</label>
+    <select id="menu_code"></select>
+
+    <button id="submit">분석하기</button>
+    <div id="error" class="error hidden"></div>
+  </div>
+
+  <div id="spinner" class="card spinner hidden">
+    ⏳ 리포트를 생성하는 중입니다... (30초~2분)
+  </div>
+
+  <div id="result-card" class="card hidden">
+    <div id="result"></div>
+  </div>
+</div>
+
+<!-- 사업자 정보 푸터 -->
+<div class="footer">
+  <div class="footer-content">
+    <h4>사업자 정보</h4>
+    <p>
+      상호명: 아재네마켓 | 대표: 임유근 | 사업자등록번호: 327-41-00704<br>
+      통신판매업 신고번호: 제2021-경북포항-0130호<br>
+      주소: 경북 포항시 북구 흥해읍 동해대로 1586번길 신세계타운<br>
+      고객센터: 010-2132-5621 | 이메일: yougeun58@naver.com
+    </p>
+    <div class="footer-links">
+      <a href="/terms.html">이용약관</a> |
+      <a href="/privacy.html">개인정보처리방침</a> |
+      <a href="/refund.html">환불 및 취소 정책</a>
+    </div>
+    <p class="footer-disclaimer">
+      본 서비스는 전통 명리학에 기반한 참고·오락용 해석이며, 의료·법률·투자 등 전문적 판단을 대체하지 않습니다.<br>
+      미성년자는 보호자의 동의 없이 결제할 수 없습니다.
+    </p>
+  </div>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  // 메뉴 목록 불러오기 (code-50 제외)
+  fetch('/api/menus')
+    .then(r => r.json())
+    .then(menus => {
+      const sel = $('menu_code');
+      menus.forEach(m => {
+        if (m.code === 'code-50') return; // VIP 메뉴 제외
+        const opt = document.createElement('option');
+        opt.value = m.code;
+        opt.textContent = `[${m.code}] ${m.title}`;
+        sel.appendChild(opt);
+      });
+      sel.value = 'code-22';
+    })
+    .catch(e => showError('메뉴 로드 실패: ' + e.message));
+
+  $('submit').addEventListener('click', async () => {
+    const name = $('name').value.trim();
+    const birth_date = $('birth_date').value;
+    if (!name || !birth_date) {
+      showError('성명과 생년월일은 필수입니다.');
+      return;
+    }
+
+    const body = {
+      name: name,
+      gender: $('gender').value,
+      calendar: $('calendar').value,
+      birth_date: birth_date,
+      time: $('time').value || null,
+      is_leap_month: false,
+      menu_code: $('menu_code').value,
+    };
+
+    $('submit').disabled = true;
+    $('spinner').classList.remove('hidden');
+    $('result-card').classList.add('hidden');
+    $('error').classList.add('hidden');
+
+    try {
+      const res = await fetch('/api/report', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || '서버 오류');
+
+      if (!data.report) throw new Error('리포트 데이터가 비어 있습니다.');
+
+      $('result').textContent = data.report;
+      $('result-card').classList.remove('hidden');
+    } catch (e) {
+      showError(e.message);
+    } finally {
+      $('spinner').classList.add('hidden');
+      $('submit').disabled = false;
+    }
+  });
+
+  function showError(msg) {
+    const el = $('error');
+    el.textContent = '⚠️ ' + msg;
+    el.classList.remove('hidden');
+  }
+</script>
+</body>
+</html>
